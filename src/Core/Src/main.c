@@ -80,11 +80,18 @@ static void MX_GPIO_Init(void);
 	int rdy_q_head, rdy_q_tail, delay_q_head, delay_q_tail;
 	
 	void QueTask(void* func_in, uint8_t priority_in) {
-		
+		rdy_que[rdy_q_tail].func = func_in;
+		rdy_que[rdy_q_tail].ref_prio = priority_in;
+		rdy_que[rdy_q_tail].cur_prio = priotity_in;
 	}
 	
 	void ReRunMe(int delay_in) {
 		
+	}
+	
+	void Deque() {
+		cur_task = rdy_que+rdy_q_head;
+		rdy_q_head++;Q
 	}
 	
 	struct queue_task rdy_que[MAX_N_TASKS];
@@ -93,7 +100,10 @@ static void MX_GPIO_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	rdy_q_head = 0;
+	rdy_q_tail = 0;
+	delay_q_head = 0;
+	rdy_q_tail = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
