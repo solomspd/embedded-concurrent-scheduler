@@ -184,7 +184,6 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-	extern char chng_task;
 	
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
