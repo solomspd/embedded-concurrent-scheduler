@@ -408,6 +408,11 @@
               <FileType>1</FileType>
               <FilePath>../Core/Src/stm32l4xx_hal_msp.c</FilePath>
             </File>
+            <File>
+              <FileName>scheduler.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\scheduler.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

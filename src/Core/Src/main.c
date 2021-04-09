@@ -20,6 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include <stdlib.h>
+#include "../../scheduler.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -55,118 +56,135 @@ static void MX_GPIO_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#define MAX_N_TASKS 32
 
+struct task {
+	uint8_t prio, ref_prio;
+	void (*func)(void);
+	int ref_count;
+};
+
+struct queue {
+	struct task* que[MAX_N_TASKS];
+	int head;
+	int tail;
+	const int max;
+};
+
+void wrap_around(int *x,int wrap_val);
+struct task* get_tail(struct queue *que);
+struct task* get_head(struct queue *que);
+struct task* que_pop(struct queue *que);
+struct task* que_pop_back(struct queue *que);
+void swap_task(struct task **a, struct task **b);
+void queue_push_back(struct queue *que, struct task *new_task);
+void QueTask(void (*func_in)(void), uint8_t priority_in);
+void ReRunMe(unsigned int delay_in);
+void Deque(void);
+void init(void);
+
+// TODO propper boudary and error checking when queue overflows
+
+//// variable declarations
+
+struct queue rdy_que, delay_que;
+struct task *cur_task;
+
+char chng_task = 0;
+
+void wrap_around(int *x, int wrap_val) { // boiler plate to make queue circular
+	if (*x < 0) {
+		*x = wrap_val - 1;
+	} else if (*x == wrap_val) {
+		*x = 0;
+	}
+}
+
+struct task* get_tail(struct queue *que) {
+	return que->que[que->tail];
+}
+
+struct task* get_head(struct queue *que) {
+	return que->que[que->head];
+}
+
+struct task* que_pop(struct queue *que) {
+	struct task *ret = que->que[que->head++];
+	wrap_around(&(que->head), que->max);
+	return ret;
+}
+
+struct task* que_pop_back(struct queue *que) {
+	struct task *ret = que->que[que->tail--];
+	wrap_around(&(que->head), que->max);
+	return ret;
+}
+
+void swap_task(struct task **a, struct task **b) {
+	struct task *temp = *a;
+	*a = *b;
+	*b = temp;
+}
+
+void queue_push_back(struct queue *que, struct task *new_task) {
+	que->tail++;
+	wrap_around(&que->tail, que->max);
+	if (que->tail == que->head) return; // Queue overflow. should never reach this state.
+	que->que[que->tail] = new_task;
+	int i, ii;
+	for (i = que->tail; 1; --i) {
+		wrap_around(&i, que->max);
+		ii = i - 1;
+		wrap_around(&ii, que->max);
+		if (que->que[i]->prio > que->que[ii]->prio) {
+			swap_task(&que->que[i], &que->que[ii]);
+		} else {
+			break;
+		}
+	}
+}
+
+void QueTask(void (*func_in)(void), uint8_t priority_in) {
+	struct task *new_task = malloc(sizeof(struct task));
+	new_task->func = func_in;
+	new_task->prio = priority_in;
+	new_task->ref_prio = priority_in;
+	new_task->ref_count = 1;
+	queue_push_back(&rdy_que, new_task);
+}
+
+void ReRunMe(unsigned int delay_in) {
+	cur_task->ref_count++;
+	if (delay_in ==  0) {
+		cur_task->prio = cur_task->ref_prio;
+		queue_push_back(&rdy_que, cur_task);
+	} else {
+		cur_task->prio = delay_in;
+		queue_push_back(&delay_que, cur_task);
+	}
+}
+
+void Deque() {
+	cur_task = rdy_que.que[rdy_que.head];
+	cur_task->ref_count--;
+	rdy_que.head++;
+	wrap_around(&rdy_que.head, rdy_que.max);
+	cur_task->func();
+	if (cur_task->ref_count == 0) {
+		free(cur_task);
+	}
+}
+
+void init() {
+	
+}
 /* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
   * @retval int
   */
-	
-	#define MAX_N_TASKS 32
-	
-	void wrap_around(int *x, int wrap_val) { // boiler plate
-		if (*x < 0) {
-			*x = wrap_val-1;
-		} else if (*x == wrap_val) {
-			*x = 0;
-		}
-	}
-	
-	// TODO propper boudary and error checking when queue overflows
-	
-	//// variable declarations
-	
-	struct task {
-		uint8_t prio;
-		void (*func)(void);
-		int ref_count;
-	};
-	
-	struct queue {
-		struct task* que[MAX_N_TASKS];
-		int head;
-		int tail;
-		const int max;
-	};
-	
-	struct queue rdy_que, delay_que;
-	struct task *cur_task;
-	
-	char chng_task = 0;
-	
-	//// queue functions
-	
-	struct task* get_tail(struct queue *que) {
-		return que->que[que->tail];
-	}
-	
-	struct task* get_head(struct queue *que) {
-		return que->que[que->head];
-	}
-	
-	struct task* que_pop(struct queue *que) {
-		struct task *ret = que->que[que->head++];
-		wrap_around(&(que->head), que->max);
-		return ret;
-	}
-	
-	struct task* que_pop_back(struct queue *que) {
-		struct task *ret = que->que[que->tail--];
-		wrap_around(&(que->head), que->max);
-		return ret;
-	}
-	
-	void swap_task(struct task **a, struct task **b) {
-		struct task *temp = *a;
-		*a = *b;
-		*b = temp;
-	}
-	
-	void queue_push_back(struct queue *que, struct task *new_task) {
-		que->tail++;
-		wrap_around(&que->tail, que->max);
-		if (que->tail == que->head) return; // Queue overflow. should never reach this state.
-		que->que[que->tail] = new_task;
-		int i, ii;
-		for (i = que->tail; 1; --i) {
-			wrap_around(&i, que->max);
-			ii = i - 1;
-			wrap_around(&ii, que->max);
-			if (que->que[i]->prio < que->que[ii]->prio) {
-				swap_task(&que->que[i], &que->que[ii]);
-			} else {
-				break;
-			}
-		}
-	}
-	
-	void QueTask(void (*func_in)(void), uint8_t priority_in) {
-		struct task *new_task = malloc(sizeof(struct task));
-		new_task->func = func_in;
-		new_task->prio = priority_in;
-		new_task->ref_count = 1;
-		queue_push_back(&rdy_que, new_task);
-	}
-	
-	void ReRunMe(int delay_in) {
-		
-	}
-	
-	void Deque() {
-		cur_task = rdy_que.que[rdy_que.head];
-		cur_task->ref_count--;
-		rdy_que.head++;
-		wrap_around(&rdy_que.head, rdy_que.max);
-		cur_task->func();
-		if (cur_task->ref_count == 0) {
-			free(cur_task);
-		}
-	}
-	
-	void init() {
-		
-	}
+
 	
 int main(void)
 {
@@ -196,12 +214,14 @@ int main(void)
 
   /* USER CODE END 2 */
 
+	init();
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
     /* USER CODE END WHILE */
-
+		Deque();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

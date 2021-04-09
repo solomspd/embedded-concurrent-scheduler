@@ -21,6 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32l4xx_it.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -181,9 +182,19 @@ void PendSV_Handler(void)
 /**
   * @brief This function handles System tick timer.
   */
+
+extern void wrap_around(int *x,int wrap_val);
+extern struct queue delay_que;
+
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
+	
+	int i;
+	for (i = delay_que.head; i != delay_que.tail; i++) {
+		delay_que[i].prio--;
+		wrap_around(&i, delay_que.max);
+	}
 	
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
