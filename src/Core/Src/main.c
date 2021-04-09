@@ -70,19 +70,35 @@ static void MX_GPIO_Init(void);
 	
 	struct queue_task {
 		uint8_t cur_prio, ref_prio;
-		void* func;
+		void (*func)(void);
 	};
 	
-	struct queue_task rdy_que[MAX_N_TASKS];
-	struct queue_task delay_que[MAX_N_TASKS];
+	struct queue {
+		struct queue_task que[MAX_N_TASKS];
+		int head;
+		int tail;
+		const int len;
+	};
+	
+	struct queue rdy_que, delay_que;
 	struct queue_task *cur_task;
 	
-	int rdy_q_head, rdy_q_tail, delay_q_head, delay_q_tail;
+	char chng_task = 0;
 	
-	void QueTask(void* func_in, uint8_t priority_in) {
-		rdy_que[rdy_q_tail].func = func_in;
-		rdy_que[rdy_q_tail].ref_prio = priority_in;
-		rdy_que[rdy_q_tail].cur_prio = priotity_in;
+	struct queue_task* get_tail(struct queue *que) {
+		return &(que->que[que->tail]);
+	}
+	
+	struct queue_task* get_head(struct queue *que) {
+		return &(que->que[que->head]);
+	}
+	
+	void QueTask(void (*func_in)(void), uint8_t priority_in) {
+		rdy_que.que[rdy_que.tail].func = func_in;
+		rdy_que.que[rdy_que.tail].ref_prio = priority_in;
+		rdy_que.que[rdy_que.tail].cur_prio = priority_in;
+		++rdy_que.tail;
+		wrap_around(&rdy_que.tail, rdy_que.len);
 	}
 	
 	void ReRunMe(int delay_in) {
@@ -90,20 +106,18 @@ static void MX_GPIO_Init(void);
 	}
 	
 	void Deque() {
-		cur_task = rdy_que+rdy_q_head;
-		rdy_q_head++;Q
+		cur_task = &(rdy_que.que[rdy_que.tail]);
+		rdy_que.head++;
+		wrap_around(&rdy_que.head, rdy_que.len);
+		do {
+			cur_task->func();
+		} while (!chng_task);
 	}
-	
-	struct queue_task rdy_que[MAX_N_TASKS];
-	struct queue_task delay_que[MAX_N_TASKS];
 	
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	rdy_q_head = 0;
-	rdy_q_tail = 0;
-	delay_q_head = 0;
-	rdy_q_tail = 0;
+	
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
