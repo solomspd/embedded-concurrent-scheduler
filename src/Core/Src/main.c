@@ -33,6 +33,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define INTERNAL 0
+#define DEMO1 1
+#define DEMO2 2
+#define TASK_SET DEMO1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -125,7 +129,7 @@ void queue_push_back(struct queue *que, struct task *new_task) {
 		wrap_around(&i, que->max);
 		ii = i - 1;
 		wrap_around(&ii, que->max);
-		if (que->que[i]->prio > que->que[ii]->prio) {
+		if (que->que[i]->prio < que->que[ii]->prio) {
 			swap_task(&que->que[i], &que->que[ii]);
 		} else {
 			break;
@@ -145,7 +149,6 @@ void QueTask(void (*func_in)(void), uint8_t priority_in) {
 }
 
 void ReRunMe(unsigned int delay_in) {
-	cur_task->ref_count++;
 	if (delay_in ==  0) {
 		cur_task->prio = cur_task->ref_prio;
 		queue_push_back(&rdy_que, cur_task);
@@ -177,6 +180,8 @@ void init() {
 	HAL_SYSTICK_Config(SystemCoreClock/20);
 }
 
+
+//// TASKS FOR INTERNAL TESTING ////
 void taskA() {
 	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
 	ReRunMe(10);
@@ -184,17 +189,21 @@ void taskA() {
 
 int taskb_cnt = 0;
 void taskB() {
-	uint8_t buf[10] = {0,0,0,0,0,0,0,0,0,0};
-	uint8_t temp = taskb_cnt;
+	uint8_t buf[10] = {'0','0','0','0','0','0','0','0','0','0'};
+	int temp = taskb_cnt;
 	int i;
 	for (i = 9; temp > 0 && i >= 0; i--) {
 		buf[i] = temp%10+'0';
 		temp /= 10;
 	}
 	HAL_UART_Transmit(&huart2, buf, sizeof(buf), HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart2, "\n\r", 3, HAL_MAX_DELAY);
 	taskb_cnt++;
 	ReRunMe(6);
 }
+////////////////////////////////////
+
+void 
 
 /* USER CODE END 0 */
 
@@ -228,13 +237,19 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+	init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	#if TASK_SET == INTERNAL
 	QueTask(taskA, 1);
 	QueTask(taskB, 4);
+	#elif TASK_SET == DEMO1
+	QueTask();
+	#elif TASK_SET == DEMO2
+	
+	#endif
   while (1)
   {
 		Deque();

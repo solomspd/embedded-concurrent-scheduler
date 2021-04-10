@@ -189,12 +189,14 @@ void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
 	
-	int i;
-	for (i = delay_que.head; i-1 != delay_que.tail; i++) {
+	int i = delay_que.head;
+	while (i != delay_que.tail) {
 		delay_que.que[i]->prio--;
+		i++;
 		wrap_around(&i, delay_que.max);
 	}
-	while (delay_que.que[delay_que.head]->prio == 0) {
+	
+	while (delay_que.que[delay_que.head]->prio == 0 && delay_que.len > 0) {
 		struct task* cur_task = queue_pop(&delay_que);
 		cur_task->prio = cur_task->ref_prio;
 		queue_push_back(&rdy_que, cur_task);
