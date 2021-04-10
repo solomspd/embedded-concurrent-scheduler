@@ -27,15 +27,15 @@ Project File Date:  04/10/2021
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 7 (build 960)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'project 1'
+compiling stm32l4xx_it.c...
 compiling main.c...
-../Core/Src/main.c(212): error:  #20: identifier "hi2c1" is undefined
-  	HAL_I2C_Master_Transmit(&hi2c1, 0xD0, (uint8_t[]){0x0E, 0x3C}, 2, 10); // refresh temperature
-../Core/Src/main.c(232): error:  #20: identifier "cur_temp" is undefined
-  	if (cur_temp > thresh) {
-../Core/Src/main.c(243): error:  #20: identifier "temp_buf" is undefined
-  	HAL_UART_Receive(&huart2, temp_buf+temp_loc, 1, HAL_MAX_DELAY);
-../Core/Src/main.c: 0 warnings, 3 errors
-"project 1\project 1.axf" - 3 Error(s), 0 Warning(s).
+../Core/Src/main.c(201): warning:  #550-D: variable "buf"  was set but never used
+  	uint8_t buf[7] = {0,0,'.',0,0,'\n','\r'};
+../Core/Src/main.c: 1 warning, 0 errors
+linking...
+Program Size: Code=9740 RO-data=500 RW-data=48 ZI-data=2032  
+FromELF: creating hex file...
+"project 1\project 1.axf" - 0 Error(s), 1 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -59,8 +59,7 @@ Package Vendor: Keil
 
    * Component: ARM::CMSIS:CORE:5.4.0
       Include file:  CMSIS\Core\Include\tz_context.h
-Target not created.
-Build Time Elapsed:  00:00:04
+Build Time Elapsed:  00:00:05
 </pre>
 </body>
 </html>

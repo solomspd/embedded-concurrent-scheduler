@@ -45,6 +45,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -54,19 +56,8 @@ UART_HandleTypeDef huart2;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-
 static void MX_USART2_UART_Init(void);
-void wrap_around(int *x,int wrap_val);
-struct task* get_tail(struct queue *que);
-struct task* get_head(struct queue *que);
-struct task* que_pop(struct queue *que);
-struct task* que_pop_back(struct queue *que);
-void swap_task(struct task **a, struct task **b);
-void queue_push_back(struct queue *que, struct task *new_task);
-void QueTask(void (*func_in)(void), uint8_t priority_in);
-void ReRunMe(unsigned int delay_in);
-void Deque(void);
-void init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -205,10 +196,10 @@ void taskB() {
 
 //// DEMO 1 (temperature sensor) TASKS ////
 uint8_t thresh = 0;
+uint16_t cur_temp = 0;
 void read_temp() {
 	uint8_t buf[7] = {0,0,'.',0,0,'\n','\r'};
 	uint8_t tmp;
-	uint16_t cur_temp = 0;
 	HAL_I2C_Master_Transmit(&hi2c1, 0xD0, (uint8_t[]){0x0E, 0x3C}, 2, 10); // refresh temperature
 	HAL_I2C_Master_Transmit(&hi2c1, 0xD0, (uint8_t[]){0x11}, 1, 10); // request current temperature
 	HAL_I2C_Master_Receive(&hi2c1, 0xD1, &tmp, 1, 10); // read current temperature
@@ -224,7 +215,7 @@ void read_temp() {
 	cur_temp = tmp & 0x3;
 	buf[3] = (cur_temp*25)/10 + '0';
 	buf[4] = (cur_temp*25)%10 + '0';
-	HAL_UART_Transmit(&huart2, buf, sizeof(buf), HAL_MAX_DELAY);
+	//HAL_UART_Transmit(&huart2, buf, sizeof(buf), HAL_MAX_DELAY);
 	ReRunMe(600); // 30/0.05
 }
 
@@ -237,10 +228,11 @@ void trig_alarm() {
 	ReRunMe(5);
 }
 
-uint8_t set_temp_buf [8];
+uint8_t temp_buf [8];
 int temp_loc = 0;
 void set_temp_thresh() {
-	HAL_UART_Receive(&huart2, temp_buf+temp_loc, 1, HAL_MAX_DELAY);
+	HAL_UART_Receive(&huart2, temp_buf+temp_loc, 1, 10);
+	HAL_UART_Transmit(&huart2, temp_buf+temp_loc, 1, 10);
 	if (temp_buf[temp_loc] == '\n') {
 		int tmp = 0;
 		int sig = 1;
@@ -297,6 +289,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 	init();
   /* USER CODE END 2 */
@@ -309,7 +302,7 @@ int main(void)
 	#elif TASK_SET == DEMO1
 	QueTask(read_temp, 1);
 	QueTask(trig_alarm, 3);
-	QueTask(set_temp_thresh, 2);
+	//QueTask(set_temp_thresh, 2);
 	#elif TASK_SET == DEMO2
 	QueTask(read_dist, 1);
 	#endif
@@ -317,6 +310,7 @@ int main(void)
   {
 		Deque();
     /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -357,8 +351,9 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
+  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -369,6 +364,52 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.Timing = 0x00000E14;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
 }
 
 /**

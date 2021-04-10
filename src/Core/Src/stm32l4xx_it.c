@@ -47,6 +47,8 @@ extern void wrap_around(int *x,int wrap_val);
 extern struct task* queue_pop(struct queue* que);
 extern void queue_push_back(struct queue* que, struct task* new_task);
 extern struct queue delay_que, rdy_que;
+extern void QueTask(void (*func_in)(void), uint8_t priority_in);
+extern void set_temp_thresh(void);
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,7 +62,7 @@ extern struct queue delay_que, rdy_que;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-
+extern UART_HandleTypeDef huart2;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -215,6 +217,22 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32l4xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles USART2 global interrupt.
+  */
+void USART2_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART2_IRQn 0 */
+	uint8_t tmp;
+	HAL_UART_Receive(&huart2, &tmp, 1, HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart2, &tmp, 1, HAL_MAX_DELAY);
+  /* USER CODE END USART2_IRQn 0 */
+  HAL_UART_IRQHandler(&huart2);
+  /* USER CODE BEGIN USART2_IRQn 1 */
+
+  /* USER CODE END USART2_IRQn 1 */
+}
 
 /* USER CODE BEGIN 1 */
 
