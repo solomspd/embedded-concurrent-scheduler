@@ -203,7 +203,68 @@ void taskB() {
 }
 ////////////////////////////////////
 
-void 
+//// DEMO 1 (temperature sensor) TASKS ////
+uint8_t thresh = 0;
+void read_temp() {
+	uint8_t buf[7] = {0,0,'.',0,0,'\n','\r'};
+	uint8_t tmp;
+	uint16_t cur_temp = 0;
+	HAL_I2C_Master_Transmit(&hi2c1, 0xD0, (uint8_t[]){0x0E, 0x3C}, 2, 10); // refresh temperature
+	HAL_I2C_Master_Transmit(&hi2c1, 0xD0, (uint8_t[]){0x11}, 1, 10); // request current temperature
+	HAL_I2C_Master_Receive(&hi2c1, 0xD1, &tmp, 1, 10); // read current temperature
+	cur_temp = tmp << 2;
+	HAL_I2C_Master_Transmit(&hi2c1, 0xD0, (uint8_t[]){0x12}, 1, 10); // request current temperature fraction
+	HAL_I2C_Master_Receive(&hi2c1, 0xD1, &tmp, 1, 10); // read current temperature fraction
+	cur_temp |= tmp >> 6;
+	
+	tmp = cur_temp;
+	cur_temp = cur_temp >> 2;
+	buf[0] = cur_temp/10 + '0';
+	buf[1] = cur_temp%10 + '0';
+	cur_temp = tmp & 0x3;
+	buf[3] = (cur_temp*25)/10 + '0';
+	buf[4] = (cur_temp*25)%10 + '0';
+	HAL_UART_Transmit(&huart2, buf, sizeof(buf), HAL_MAX_DELAY);
+	ReRunMe(600); // 30/0.05
+}
+
+void trig_alarm() {
+	if (cur_temp > thresh) {
+		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+	} else {
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+	}
+	ReRunMe(5);
+}
+
+uint8_t set_temp_buf [8];
+int temp_loc = 0;
+void set_temp_thresh() {
+	HAL_UART_Receive(&huart2, temp_buf+temp_loc, 1, HAL_MAX_DELAY);
+	if (temp_buf[temp_loc] == '\n') {
+		int tmp = 0;
+		int sig = 1;
+		while (temp_buf[temp_loc] != '.') {
+			tmp = sig * (temp_buf[temp_loc--] - '0');
+			sig *= 10;
+		}
+		thresh = tmp/25 + 1;
+		tmp = 0;
+		sig = 1;
+		temp_loc--; // skip decimal point
+		while (temp_loc > 0) {
+			tmp = sig * (temp_buf[temp_loc--] - '0');
+			sig *= 10;
+		}
+		thresh |= tmp << 2;
+		temp_loc = 0;
+	} else {
+		temp_loc++;
+	}
+	ReRunMe(4);
+}
+	
+///////////////////////////////////////////////////////////
 
 /* USER CODE END 0 */
 
@@ -246,9 +307,11 @@ int main(void)
 	QueTask(taskA, 1);
 	QueTask(taskB, 4);
 	#elif TASK_SET == DEMO1
-	QueTask();
+	QueTask(read_temp, 1);
+	QueTask(trig_alarm, 3);
+	QueTask(set_temp_thresh, 2);
 	#elif TASK_SET == DEMO2
-	
+	QueTask(read_dist, 1);
 	#endif
   while (1)
   {
