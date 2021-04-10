@@ -56,20 +56,7 @@ static void MX_GPIO_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#define MAX_N_TASKS 32
 
-struct task {
-	uint8_t prio, ref_prio;
-	void (*func)(void);
-	int ref_count;
-};
-
-struct queue {
-	struct task* que[MAX_N_TASKS];
-	int head;
-	int tail;
-	const int max;
-};
 
 void wrap_around(int *x,int wrap_val);
 struct task* get_tail(struct queue *que);
@@ -108,14 +95,16 @@ struct task* get_head(struct queue *que) {
 	return que->que[que->head];
 }
 
-struct task* que_pop(struct queue *que) {
+struct task* queue_pop(struct queue *que) {
 	struct task *ret = que->que[que->head++];
+	ret->ref_count--;
 	wrap_around(&(que->head), que->max);
 	return ret;
 }
 
 struct task* que_pop_back(struct queue *que) {
 	struct task *ret = que->que[que->tail--];
+	ret->ref_count--;
 	wrap_around(&(que->head), que->max);
 	return ret;
 }
@@ -130,6 +119,7 @@ void queue_push_back(struct queue *que, struct task *new_task) {
 	que->tail++;
 	wrap_around(&que->tail, que->max);
 	if (que->tail == que->head) return; // Queue overflow. should never reach this state.
+	new_task->ref_counter++;
 	que->que[que->tail] = new_task;
 	int i, ii;
 	for (i = que->tail; 1; --i) {
@@ -149,7 +139,7 @@ void QueTask(void (*func_in)(void), uint8_t priority_in) {
 	new_task->func = func_in;
 	new_task->prio = priority_in;
 	new_task->ref_prio = priority_in;
-	new_task->ref_count = 1;
+	new_task->ref_count = 0;
 	queue_push_back(&rdy_que, new_task);
 }
 
@@ -165,10 +155,7 @@ void ReRunMe(unsigned int delay_in) {
 }
 
 void Deque() {
-	cur_task = rdy_que.que[rdy_que.head];
-	cur_task->ref_count--;
-	rdy_que.head++;
-	wrap_around(&rdy_que.head, rdy_que.max);
+	cur_task = queue_pop(&rdy_que);
 	cur_task->func();
 	if (cur_task->ref_count == 0) {
 		free(cur_task);
@@ -176,8 +163,15 @@ void Deque() {
 }
 
 void init() {
-	
+	rdy_que.head = 0;
+	rdy_que.tail = 0;
+	rdy_que.max = MAX_N_TASKS;
+	delay_que.head = 0;
+	delay_que.tail = 0;
+	delay_que.max = MAX_N_TASKS;
+	HAL_SYSTICK_Config(SystemCoreClock/20);
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -185,6 +179,9 @@ void init() {
   * @retval int
   */
 
+void taskA() {
+	
+}
 	
 int main(void)
 {

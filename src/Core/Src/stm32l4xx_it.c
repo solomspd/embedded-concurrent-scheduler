@@ -21,6 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32l4xx_it.h"
+#include "../../scheduler.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -184,16 +185,23 @@ void PendSV_Handler(void)
   */
 
 extern void wrap_around(int *x,int wrap_val);
-extern struct queue delay_que;
+extern struct task* queue_pop(struct queue* que);
+extern void queue_push_back(struct queue* que, struct task* new_task);
+extern struct queue delay_que, rdy_que;
 
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
 	
 	int i;
-	for (i = delay_que.head; i != delay_que.tail; i++) {
-		delay_que[i].prio--;
+	for (i = delay_que.head; i-1 != delay_que.tail; i++) {
+		delay_que.que[i]->prio--;
 		wrap_around(&i, delay_que.max);
+	}
+	while (delay_que.que[delay_que.head]->prio == 0) {
+		struct task* cur_task = queue_pop(&delay_que);
+		cur_task->prio = cur_task->ref_prio;
+		queue_push_back(&rdy_que, cur_task);
 	}
 	
   /* USER CODE END SysTick_IRQn 0 */
