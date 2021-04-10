@@ -21,10 +21,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32l4xx_it.h"
-#include "../../scheduler.h"
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "../../scheduler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,7 +43,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+extern void wrap_around(int *x,int wrap_val);
+extern struct task* queue_pop(struct queue* que);
+extern void queue_push_back(struct queue* que, struct task* new_task);
+extern struct queue delay_que, rdy_que;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -183,12 +185,6 @@ void PendSV_Handler(void)
 /**
   * @brief This function handles System tick timer.
   */
-
-extern void wrap_around(int *x,int wrap_val);
-extern struct task* queue_pop(struct queue* que);
-extern void queue_push_back(struct queue* que, struct task* new_task);
-extern struct queue delay_que, rdy_que;
-
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */

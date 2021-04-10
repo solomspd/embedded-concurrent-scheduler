@@ -5,6 +5,8 @@
 "project 1\stm32l4xx_hal_msp.o"
 "project 1\stm32l4xx_hal_tim.o"
 "project 1\stm32l4xx_hal_tim_ex.o"
+"project 1\stm32l4xx_hal_uart.o"
+"project 1\stm32l4xx_hal_uart_ex.o"
 "project 1\stm32l4xx_hal.o"
 "project 1\stm32l4xx_hal_i2c.o"
 "project 1\stm32l4xx_hal_i2c_ex.o"

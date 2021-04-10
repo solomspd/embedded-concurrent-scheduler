@@ -12,4 +12,5 @@ struct queue {
 	int head;
 	int tail;
 	int max;
+	int len;
 };

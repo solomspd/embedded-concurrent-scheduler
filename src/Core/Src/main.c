@@ -19,12 +19,11 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include <stdlib.h>
-#include "../../scheduler.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdlib.h>
+#include "../../scheduler.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,6 +41,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
@@ -50,14 +50,8 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-/* USER CODE BEGIN PFP */
 
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-
+static void MX_USART2_UART_Init(void);
 void wrap_around(int *x,int wrap_val);
 struct task* get_tail(struct queue *que);
 struct task* get_head(struct queue *que);
@@ -69,6 +63,12 @@ void QueTask(void (*func_in)(void), uint8_t priority_in);
 void ReRunMe(unsigned int delay_in);
 void Deque(void);
 void init(void);
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
 
 // TODO propper boudary and error checking when queue overflows
 
@@ -76,8 +76,6 @@ void init(void);
 
 struct queue rdy_que, delay_que;
 struct task *cur_task;
-
-char chng_task = 0;
 
 void wrap_around(int *x, int wrap_val) { // boiler plate to make queue circular
 	if (*x < 0) {
@@ -99,6 +97,7 @@ struct task* queue_pop(struct queue *que) {
 	struct task *ret = que->que[que->head++];
 	ret->ref_count--;
 	wrap_around(&(que->head), que->max);
+	que->len--;
 	return ret;
 }
 
@@ -106,6 +105,7 @@ struct task* que_pop_back(struct queue *que) {
 	struct task *ret = que->que[que->tail--];
 	ret->ref_count--;
 	wrap_around(&(que->head), que->max);
+	que->len--;
 	return ret;
 }
 
@@ -116,13 +116,12 @@ void swap_task(struct task **a, struct task **b) {
 }
 
 void queue_push_back(struct queue *que, struct task *new_task) {
-	que->tail++;
-	wrap_around(&que->tail, que->max);
-	if (que->tail == que->head) return; // Queue overflow. should never reach this state.
-	new_task->ref_counter++;
+	new_task->ref_count++;
 	que->que[que->tail] = new_task;
+	que->len++;
+	//if (que->tail == que->head) return; // Queue overflow. should never reach this state.
 	int i, ii;
-	for (i = que->tail; 1; --i) {
+	for (i = que->tail; i != que->head; --i) {
 		wrap_around(&i, que->max);
 		ii = i - 1;
 		wrap_around(&ii, que->max);
@@ -132,6 +131,8 @@ void queue_push_back(struct queue *que, struct task *new_task) {
 			break;
 		}
 	}
+	que->tail++;
+	wrap_around(&que->tail, que->max);
 }
 
 void QueTask(void (*func_in)(void), uint8_t priority_in) {
@@ -155,10 +156,12 @@ void ReRunMe(unsigned int delay_in) {
 }
 
 void Deque() {
-	cur_task = queue_pop(&rdy_que);
-	cur_task->func();
-	if (cur_task->ref_count == 0) {
-		free(cur_task);
+	if (rdy_que.len > 0) {
+		cur_task = queue_pop(&rdy_que);
+		cur_task->func();
+		if (cur_task->ref_count == 0) {
+			free(cur_task);
+		}
 	}
 }
 
@@ -166,10 +169,31 @@ void init() {
 	rdy_que.head = 0;
 	rdy_que.tail = 0;
 	rdy_que.max = MAX_N_TASKS;
+	rdy_que.len = 0;
 	delay_que.head = 0;
 	delay_que.tail = 0;
 	delay_que.max = MAX_N_TASKS;
+	delay_que.len = 0;
 	HAL_SYSTICK_Config(SystemCoreClock/20);
+}
+
+void taskA() {
+	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+	ReRunMe(10);
+}
+
+int taskb_cnt = 0;
+void taskB() {
+	uint8_t buf[10] = {0,0,0,0,0,0,0,0,0,0};
+	uint8_t temp = taskb_cnt;
+	int i;
+	for (i = 9; temp > 0 && i >= 0; i--) {
+		buf[i] = temp%10+'0';
+		temp /= 10;
+	}
+	HAL_UART_Transmit(&huart2, buf, sizeof(buf), HAL_MAX_DELAY);
+	taskb_cnt++;
+	ReRunMe(6);
 }
 
 /* USER CODE END 0 */
@@ -178,11 +202,6 @@ void init() {
   * @brief  The application entry point.
   * @retval int
   */
-
-void taskA() {
-	
-}
-	
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -207,18 +226,19 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
-	init();
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	QueTask(taskA, 1);
+	QueTask(taskB, 4);
   while (1)
   {
-    /* USER CODE END WHILE */
 		Deque();
+    /* USER CODE END WHILE */
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -232,6 +252,7 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
@@ -258,6 +279,12 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2;
+  PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /** Configure the main internal regulator output voltage
   */
   if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
@@ -267,15 +294,62 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PB3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
