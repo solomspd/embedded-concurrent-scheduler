@@ -79,31 +79,50 @@ Used to treat the queue as a continous queue. Wraps around the values so that in
 
 Read the last task in the queue.
 
+- `que`: Pointer to queue to get tail from.
+
 ### `struct task* get_head(struct queue *que);`
+
+- `que`: Pointer to queue to get head from.
 
 Read the first task in the queue.
 
 ### `struct task* que_pop(struct queue *que);`
 
+- `que`: Pointer to queue to pop the head from.
+
 Remove the first task in the queue and return its pointer.
 
 ### `struct task* que_pop_back(struct queue *que);`
+
+- `que`: Pointer to queue to pop the tail from.
 
 Remove the last task in the queue and return its pointer.
 
 ### `void swap_task(struct task **a, struct task **b);`
 
+- `a`: One of the two task pointer reference to swap.
+- `b`: The other task pointer reference to swap.
+
 Swap two task pointers. Critical for inserting a task into the queue.
 
 ### `void queue_push_back(struct queue *que, struct task *new_task);`
+
+- `que`: Pointer to que to push back the task back to.
+- `new_task`: Pointer to task to add to que.
 
 Add the task pointer to the queue pointed at by `que`.
 
 ### `uint8_t eq_tasks(struct task *a, struct task *b);`
 
+- `a`: Pointer to one of the two tasks to compare.
+- `b`: Pointer to the other task to compare.
+
 Compare 2 tasks. If all elements are equivalent, then it returns a bytes of all 1 otherwise, it returns a bytes of all 0.
 
 ### `void init_que(struct queue *que);`
+
+- `que`: Pointer to que to initalize.
 
 Initialize the queue pointed to by que to default values.
 
