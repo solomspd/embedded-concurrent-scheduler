@@ -1,8 +1,9 @@
-#define MAX_N_TASKS 32
 #include "stdint.h"
 
+#define MAX_N_TASKS 32
+
 struct task {
-	uint16_t prio, ref_prio;
+	uint8_t prio, ref_prio;
 	void (*func)(void);
 	int ref_count;
 };

@@ -38,7 +38,7 @@
 #define DEMO1 1
 #define DEMO2 2
 #define TASK_SET DEMO1
-#define DEBUG
+//#define DEBUG
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -73,7 +73,7 @@ void queue_push_back(struct queue *que, struct task *new_task);
 uint8_t eq_tasks(struct task *a, struct task *b);
 void init_que(struct queue *que);
 
-void QueTask(void (*func_in)(void), uint8_t priority_in);
+void QueTask(void (*func_in)(void), uint16_t priority_in);
 void ReRunMe(unsigned int delay_in);
 void Deque(void);
 void init(void);
@@ -149,7 +149,7 @@ void queue_push_back(struct queue *que, struct task *new_task) {
 	wrap_around(&que->tail, que->max);
 }
 
-void QueTask(void (*func_in)(void), uint8_t priority_in) {
+void QueTask(void (*func_in)(void), uint16_t priority_in) {
 	struct task *new_task = malloc(sizeof(struct task));
 	new_task->func = func_in;
 	new_task->prio = priority_in;
@@ -225,7 +225,7 @@ void taskB() {
 		temp /= 10;
 	}
 	HAL_UART_Transmit(&huart2, buf, sizeof(buf), HAL_MAX_DELAY);
-	HAL_UART_Transmit(&huart2, "\n\r", 3, HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart2, (uint8_t*)"\n\r", 3, HAL_MAX_DELAY);
 	taskb_cnt++;
 	ReRunMe(6);
 }
@@ -282,12 +282,16 @@ void unit_tests() {
 	unit_task.func = led_off;
 	unit_task.ref_count = 1;
 	assert(eq_tasks(&unit_task, get_head(&rdy_que)));
+	queue_pop(&rdy_que);
+	assert(eq_tasks(&unit_task, queue_pop(&rdy_que)));
 	
 }
 
 ////////////////////////////////////
 
 //// DEMO 1 (temperature sensor) TASKS ////
+
+// here temperature will be compared by a single number and the 2 fraction bits are the 2 LSB so it would be 8 bits integer then 2 bits fraction in a single integer variable. for example integer of 0b1 and fraction of 0b01 would result in a value of 0b101
 uint8_t thresh = 0;
 int16_t cur_temp = 0;
 void read_temp() {
@@ -301,7 +305,7 @@ void read_temp() {
 	HAL_I2C_Master_Receive(&hi2c1, 0xD1, &tmp, 1, 10); // read current temperature fraction
 	cur_temp |= tmp >> 6;
 	
-	#ifdef DEBUG
+	#ifdef DEBUG // Print read temperature
 	tmp = cur_temp;
 	int16_t debug;
 	debug = tmp >> 2;
@@ -328,29 +332,29 @@ void trig_alarm() {
 uint8_t temp_buf [8];
 int temp_loc = 0;
 void set_temp_thresh() {
-	HAL_UART_Receive(&huart1, temp_buf+temp_loc, 1, 10);
-	HAL_UART_Transmit(&huart1, temp_buf+temp_loc, 1, 10);
-	__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
+	HAL_UART_Receive(&huart1, temp_buf+temp_loc, 1, 10); // process newest character
+	HAL_UART_Transmit(&huart1, temp_buf+temp_loc, 1, 10); // send it back so that there is feedback on the serial terminal
+	__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE); // enable interrupts again so we can process the next character
 	if (temp_buf[temp_loc] == 0x0D) {
-		__HAL_UART_DISABLE_IT(&huart1, UART_IT_RXNE);
-		HAL_UART_Transmit(&huart1, (uint8_t*)"\n\r", 3, 10);
-		__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
-		volatile int tmp = 0;
+		__HAL_UART_DISABLE_IT(&huart1, UART_IT_RXNE); // disable interrupt so UART functions are not broken from an interrupt
+		HAL_UART_Transmit(&huart1, (uint8_t*)"\n\r", 3, 10); // print new line so its more legible
+		__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE); // enable interrupts again
+		int tmp = 0;
 		int sig = 1;
 		temp_loc--;
-		while (temp_buf[temp_loc] != '.') {
+		while (temp_buf[temp_loc] != '.') { // read fraction
 			tmp += sig * (temp_buf[temp_loc--] - '0');
 			sig *= 10;
 		}
-		thresh = tmp/25;
+		thresh = tmp/25; // reduce fraction to the percision of the temperature sensor
 		tmp = 0;
 		sig = 1;
 		temp_loc--; // skip decimal point
-		while (temp_loc >= 0) {
+		while (temp_loc >= 0) { // read integer
 			tmp += sig * (temp_buf[temp_loc--] - '0');
 			sig *= 10;
 		}
-		thresh += tmp << 2;
+		thresh |= tmp << 2; // shift to left to leave the 2 fraction bits undisturbed
 		temp_loc = 0;
 	} else {
 		temp_loc++;

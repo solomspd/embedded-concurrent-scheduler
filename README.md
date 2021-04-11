@@ -12,11 +12,9 @@ No additional configuration required through CubeMx since no pin designations in
 
 ## Integrating into your project
 
-To build the project, use your preferred pinout and configurations and the resulting project files from CubeMx.
+Simply use the CubeMx project as a template and configure it to the desired pinouts. The sechuler is all in the `USER CODE 0` section.
 
-Simply include the `sched.h` file in main and the `itter.h` file in the interrupts source file.
-
-Make sure to define the number of tasks expected to be run by a compiler directive; for example this here sets the max number of tasks as 32: `#define MAX_N_TASKS 32`. Make sure to add this before including the header files not after.
+Make sure to define the number of tasks expected to be run by a compiler directive; for example this here sets the max number of tasks as 32: `#define MAX_N_TASKS 32`. Make sure to add this before including the header file `scheduler.h` not after.
 
 Add tasks to the scheduler to be run once via `QueTask(function, priority)` and run periodically by adding a `ReRunMe(delay_in_ticks)` at the end of this function.
 
