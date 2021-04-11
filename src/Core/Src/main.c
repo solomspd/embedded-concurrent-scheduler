@@ -69,7 +69,7 @@ struct task* que_pop(struct queue *que);
 struct task* que_pop_back(struct queue *que);
 void swap_task(struct task **a, struct task **b);
 void queue_push_back(struct queue *que, struct task *new_task);
-void eq_tasks(struct task *a, struct task *b);
+uint8_t eq_tasks(struct task *a, struct task *b);
 void init_que(struct queue *que);
 
 void QueTask(void (*func_in)(void), uint8_t priority_in);
@@ -190,7 +190,7 @@ void init() {
 	HAL_SYSTICK_Config(SystemCoreClock/20);
 }
 
-void eq_tasks(struct task *a, struct task *b) {
+uint8_t eq_tasks(struct task *a, struct task *b) {
 	uint8_t ret = 0xFF;
 	ret &= a->prio == b->prio;
 	ret &= a->ref_prio == b->ref_prio;
@@ -253,24 +253,33 @@ void unit_tests() {
 	assert(eq_tasks(&unit_task, &unit_task));
 	
 	queue_push_back(&unit_que, &unit_task);
-	assert(eq_tasks(&unit_task, get_tail(unit_que)));
-	assert(eq_tasks(&unit_task, get_head(unit_que)));
+	assert(eq_tasks(&unit_task, get_tail(&unit_que)));
+	assert(eq_tasks(&unit_task, get_head(&unit_que)));
 	
-	assert(eq(tasks(&unit_task, queue_pop(&unit_que));
+	assert(eq_tasks(&unit_task, queue_pop(&unit_que)));
 	
-	LL_SYSTICK_DisableIT();	// disable systick interrupt so as delay que does not interfere
+	struct task unit_task2;
+	unit_task2 = unit_task;
+	unit_task2.ref_prio = 2;
+	struct task *swap_task1 = malloc(sizeof(struct task)), *swap_task2 = malloc(sizeof(struct task));
+	*swap_task1 = unit_task;
+	*swap_task2 = unit_task2;
+	
+	swap_task(&swap_task1, &swap_task2);
+	
+	assert(eq_tasks(&unit_task, swap_task2));
+	assert(eq_tasks(&unit_task2, swap_task1));
+	
 	QueTask(tgl_led, 1);
-	assert(eq_tasks(&unit_task, get_tail(rdy_que)));
-	assert(eq_tasks(&unit_task, get_head(rdy_que)));
+	assert(eq_tasks(&unit_task, get_tail(&rdy_que)));
+	assert(eq_tasks(&unit_task, get_head(&rdy_que)));
 	QueTask(led_off, 2);
-	assert(eq_tasks(&unit_task, get_head(rdy_que));
+	assert(eq_tasks(&unit_task, get_head(&rdy_que)));
 	unit_task.prio = 2;
 	unit_task.ref_prio = 2;
 	unit_task.func = led_off;
 	unit_task.ref_count = 1;
-	assert(eq_tasks(&unit_task, get_head(rdy_que));
-	LL_SYSTICK_EnableIT(); // enable systick interrupt again
-	
+	assert(eq_tasks(&unit_task, get_head(&rdy_que)));
 	
 }
 
