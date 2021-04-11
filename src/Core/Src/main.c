@@ -37,6 +37,7 @@
 #define DEMO1 1
 #define DEMO2 2
 #define TASK_SET DEMO2
+#define DEBUG
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -208,6 +209,7 @@ void read_temp() {
 	HAL_I2C_Master_Receive(&hi2c1, 0xD1, &tmp, 1, 10); // read current temperature fraction
 	cur_temp |= tmp >> 6;
 	
+	#ifdef DEBUG
 	tmp = cur_temp;
 	cur_temp = cur_temp >> 2;
 	buf[0] = cur_temp/10 + '0';
@@ -215,7 +217,9 @@ void read_temp() {
 	cur_temp = tmp & 0x3;
 	buf[3] = (cur_temp*25)/10 + '0';
 	buf[4] = (cur_temp*25)%10 + '0';
-	//HAL_UART_Transmit(&huart2, buf, sizeof(buf), HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart2, buf, sizeof(buf), HAL_MAX_DELAY);
+	#endif
+	
 	ReRunMe(600); // 30/0.05
 }
 
@@ -262,23 +266,26 @@ void set_temp_thresh() {
 
 int dist = 0;
 void read_dist() {
-//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
-//	HAL_Delay(10);
-//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
-//	int time = 0;
-//	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_RESET) {}
-//	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_SET) { time++; }
-//	dist = time/100;
-//	
-//	char buf[10] = {0,0,0,0,0,0,0,0,0,0};
-//	int i;
-//	for (i = 9; time > 0 && i > 0; i--) {
-//		buf[i] = time%10 + '0';
-//		time /= 10;
-//	}
-//	HAL_UART_Transmit(&huart2, buf, 10, HAL_MAX_DELAY);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
+	HAL_Delay(10);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
+	int time = 0;
+	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_RESET) {}
+	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_SET) { time++; }
+	dist = time/100;
+	
+	#ifdef DEBUG
+	char buf[10] = {0,0,0,0,0,0,0,0,0,0};
+	int i;
+	for (i = 9; time > 0 && i > 0; i--) {
+		buf[i] = time%10 + '0';
+		time /= 10;
+	}
+	HAL_UART_Transmit(&huart2, buf, 10, HAL_MAX_DELAY);
 	HAL_UART_Transmit(&huart2, "\n\r", 3, HAL_MAX_DELAY);
-	ReRunMe(1);
+	#endif
+	
+	ReRunMe(5);
 }
 
 void beep() {
