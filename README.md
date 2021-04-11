@@ -45,7 +45,7 @@ When a tasks priority reaches zero, it is popped from this queue and places back
 The queue is a simple 1D array of task pointers.
 It behaves as a circular queue by keeping track where its head and tail are and "wrapping around" the array end and beginning.
 
-It does not use an array of tasks since it is a common use case for tasks to be very frequently passed from one queue to another so simply the pointer is passed. In other words only a 2 bytes are passed around instead of a 10 byte struct.
+It does not use an array of tasks since it is a common use case for tasks to be very frequently passed from one queue to another so simply the pointer is passed. In other words only a 4 bytes are passed around instead of a 12 byte struct.
 
 Tasks are created dynamically through `malloc`. When a task is passed to another queue, a counter presenting the number of active references is incremented but when it is dequeued the reference counter is decremented. When the reference counter is 0, the task allocated memory is freed.
 

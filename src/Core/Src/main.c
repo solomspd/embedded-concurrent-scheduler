@@ -181,7 +181,7 @@ void init_que(struct queue *que) {
 	que->head = 0;
 	que->tail = 0;
 	que->max = MAX_N_TASKS;
-	rdy_que.len = 0;
+	que->len = 0;
 }
 
 void init() {
@@ -235,6 +235,7 @@ void unit_tests() {
 	wrap_around(&unit_int, MAX_N_TASKS);
 	assert(unit_int == MAX_N_TASKS-1);
 	unit_int = MAX_N_TASKS;
+	wrap_around(&unit_int, MAX_N_TASKS);
 	assert(unit_int == 0);
 	
 	struct queue unit_que;
@@ -362,7 +363,7 @@ void read_dist() {
 	int time = 0;
 	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_RESET) {}
 	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_SET) { time++; }
-	dist = time/100;
+	dist = time/100 * SystemCoreClock/4000000;
 	
 	#ifdef DEBUG
 	char buf[10] = {0,0,0,0,0,0,0,0,0,0};
@@ -430,17 +431,23 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	#ifdef DEBUG
+	HAL_UART_Transmit(&huart2, (uint8_t*)"Unit tests start\n\r", 19, HAL_MAX_DELAY);
+	unit_tests();
+	HAL_UART_Transmit(&huart2, (uint8_t*)"Unit tests complete\n\r", 22, HAL_MAX_DELAY);
+	#endif
+	
 	#if TASK_SET == INTERNAL
 	QueTask(taskA, 1);
 	QueTask(taskB, 4);
 	#elif TASK_SET == DEMO1
 	QueTask(read_temp, 2);
 	QueTask(trig_alarm, 3);
-	//QueTask(set_temp_thresh, 2);
 	#elif TASK_SET == DEMO2
 	QueTask(read_dist, 1);
 	QueTask(beep, 2);
 	#endif
+	
   while (1)
   {
 		Dispatch();
