@@ -36,7 +36,7 @@
 #define INTERNAL 0
 #define DEMO1 1
 #define DEMO2 2
-#define TASK_SET DEMO1
+#define TASK_SET DEMO2
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -233,6 +233,7 @@ int temp_loc = 0;
 void set_temp_thresh() {
 	HAL_UART_Receive(&huart2, temp_buf+temp_loc, 1, 10);
 	HAL_UART_Transmit(&huart2, temp_buf+temp_loc, 1, 10);
+	__HAL_UART_ENABLE_IT(&huart2, UART_IT_RXNE);
 	if (temp_buf[temp_loc] == '\n') {
 		int tmp = 0;
 		int sig = 1;
@@ -253,9 +254,45 @@ void set_temp_thresh() {
 	} else {
 		temp_loc++;
 	}
-	ReRunMe(4);
 }
 	
+///////////////////////////////////////////////////////////
+
+//// DEMO 2 (distance) TASKS ////
+
+int dist = 0;
+void read_dist() {
+//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_SET);
+//	HAL_Delay(10);
+//	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
+//	int time = 0;
+//	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_RESET) {}
+//	while (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_1) == GPIO_PIN_SET) { time++; }
+//	dist = time/100;
+//	
+//	char buf[10] = {0,0,0,0,0,0,0,0,0,0};
+//	int i;
+//	for (i = 9; time > 0 && i > 0; i--) {
+//		buf[i] = time%10 + '0';
+//		time /= 10;
+//	}
+//	HAL_UART_Transmit(&huart2, buf, 10, HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart2, "\n\r", 3, HAL_MAX_DELAY);
+	ReRunMe(1);
+}
+
+void beep() {
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+	HAL_Delay(1);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+	if (dist <= 0) {
+		dist = 1;
+	} else if (dist >= 20) {
+		dist = 20;
+	}
+	ReRunMe(dist);
+}
+
 ///////////////////////////////////////////////////////////
 
 /* USER CODE END 0 */
@@ -300,11 +337,12 @@ int main(void)
 	QueTask(taskA, 1);
 	QueTask(taskB, 4);
 	#elif TASK_SET == DEMO1
-	QueTask(read_temp, 1);
+	QueTask(read_temp, 2);
 	QueTask(trig_alarm, 3);
 	//QueTask(set_temp_thresh, 2);
 	#elif TASK_SET == DEMO2
 	QueTask(read_dist, 1);
+	QueTask(beep, 2);
 	#endif
   while (1)
   {
@@ -461,7 +499,23 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : PA0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB3 */
   GPIO_InitStruct.Pin = GPIO_PIN_3;

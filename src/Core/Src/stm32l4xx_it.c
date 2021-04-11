@@ -224,9 +224,8 @@ void SysTick_Handler(void)
 void USART2_IRQHandler(void)
 {
   /* USER CODE BEGIN USART2_IRQn 0 */
-	uint8_t tmp;
-	HAL_UART_Receive(&huart2, &tmp, 1, HAL_MAX_DELAY);
-	HAL_UART_Transmit(&huart2, &tmp, 1, HAL_MAX_DELAY);
+	QueTask(set_temp_thresh, 1);
+	__HAL_UART_DISABLE_IT(&huart2, UART_IT_RXNE);
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
