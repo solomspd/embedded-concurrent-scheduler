@@ -167,7 +167,7 @@ void ReRunMe(unsigned int delay_in) {
 	}
 }
 
-void Deque() {
+void Dispatch() {
 	if (rdy_que.len > 0) {
 		cur_task = queue_pop(&rdy_que);
 		cur_task->func();
@@ -287,7 +287,7 @@ void unit_tests() {
 
 //// DEMO 1 (temperature sensor) TASKS ////
 uint8_t thresh = 0;
-uint16_t cur_temp = 0;
+int16_t cur_temp = 0;
 void read_temp() {
 	uint8_t buf[7] = {0,0,'.',0,0,'\n','\r'};
 	uint8_t tmp;
@@ -443,7 +443,7 @@ int main(void)
 	#endif
   while (1)
   {
-		Deque();
+		Dispatch();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
