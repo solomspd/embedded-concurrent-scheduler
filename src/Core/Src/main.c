@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdlib.h>
+#include <assert.h>
 #include "../../scheduler.h"
 /* USER CODE END Includes */
 
@@ -59,8 +60,22 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
-/* USER CODE BEGIN PFP */
 
+/* USER CODE BEGIN PFP */
+void wrap_around(int *x,int wrap_val);
+struct task* get_tail(struct queue *que);
+struct task* get_head(struct queue *que);
+struct task* que_pop(struct queue *que);
+struct task* que_pop_back(struct queue *que);
+void swap_task(struct task **a, struct task **b);
+void queue_push_back(struct queue *que, struct task *new_task);
+void eq_tasks(struct task *a, struct task *b);
+void init_que(struct queue *que);
+
+void QueTask(void (*func_in)(void), uint8_t priority_in);
+void ReRunMe(unsigned int delay_in);
+void Deque(void);
+void init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -68,10 +83,20 @@ static void MX_I2C1_Init(void);
 
 // TODO propper boudary and error checking when queue overflows
 
-//// variable declarations
+//// Queue variable declarations
 
 struct queue rdy_que, delay_que;
 struct task *cur_task;
+
+struct task* get_tail(struct queue *que) {
+	int tmp = que->tail - 1;
+	wrap_around(&tmp, que->max);
+	return que->que[tmp];
+}
+
+struct task* get_head(struct queue *que) {
+	return que->que[que->head];
+}
 
 void wrap_around(int *x, int wrap_val) { // boiler plate to make queue circular
 	if (*x < 0) {
@@ -81,15 +106,7 @@ void wrap_around(int *x, int wrap_val) { // boiler plate to make queue circular
 	}
 }
 
-struct task* get_tail(struct queue *que) {
-	return que->que[que->tail];
-}
-
-struct task* get_head(struct queue *que) {
-	return que->que[que->head];
-}
-
-struct task* queue_pop(struct queue *que) {
+struct task* queue_pop(struct queue *que) { // pop front of queue and return it
 	struct task *ret = que->que[que->head++];
 	ret->ref_count--;
 	wrap_around(&(que->head), que->max);
@@ -97,7 +114,7 @@ struct task* queue_pop(struct queue *que) {
 	return ret;
 }
 
-struct task* que_pop_back(struct queue *que) {
+struct task* que_pop_back(struct queue *que) { // pop back of queueu and return it
 	struct task *ret = que->que[que->tail--];
 	ret->ref_count--;
 	wrap_around(&(que->head), que->max);
@@ -160,20 +177,38 @@ void Deque() {
 	}
 }
 
-void init() {
-	rdy_que.head = 0;
-	rdy_que.tail = 0;
-	rdy_que.max = MAX_N_TASKS;
+void init_que(struct queue *que) {
+	que->head = 0;
+	que->tail = 0;
+	que->max = MAX_N_TASKS;
 	rdy_que.len = 0;
-	delay_que.head = 0;
-	delay_que.tail = 0;
-	delay_que.max = MAX_N_TASKS;
-	delay_que.len = 0;
+}
+
+void init() {
+	init_que(&rdy_que);
+	init_que(&delay_que);
 	HAL_SYSTICK_Config(SystemCoreClock/20);
 }
 
+void eq_tasks(struct task *a, struct task *b) {
+	uint8_t ret = 0xFF;
+	ret &= a->prio == b->prio;
+	ret &= a->ref_prio == b->ref_prio;
+	ret &= a->func == b->func;
+	ret &= a->ref_count == b->ref_count;
+	return ret;
+}
 
 //// TASKS FOR INTERNAL TESTING ////
+
+void tgl_led() {
+	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+}
+
+void led_off() {
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+}
+
 void taskA() {
 	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
 	ReRunMe(10);
@@ -193,6 +228,52 @@ void taskB() {
 	taskb_cnt++;
 	ReRunMe(6);
 }
+
+void unit_tests() {
+	
+	int unit_int = -1;
+	wrap_around(&unit_int, MAX_N_TASKS);
+	assert(unit_int == MAX_N_TASKS-1);
+	unit_int = MAX_N_TASKS;
+	assert(unit_int == 0);
+	
+	struct queue unit_que;
+	init_que(&unit_que);
+	assert(unit_que.head == 0);
+	assert(unit_que.tail == 0);
+	assert(unit_que.max == MAX_N_TASKS);
+	assert(unit_que.len == 0);
+	
+	struct task unit_task;
+	unit_task.prio = 1;
+	unit_task.ref_prio = 1;
+	unit_task.func = tgl_led;
+	unit_task.ref_count = 1;
+	
+	assert(eq_tasks(&unit_task, &unit_task));
+	
+	queue_push_back(&unit_que, &unit_task);
+	assert(eq_tasks(&unit_task, get_tail(unit_que)));
+	assert(eq_tasks(&unit_task, get_head(unit_que)));
+	
+	assert(eq(tasks(&unit_task, queue_pop(&unit_que));
+	
+	LL_SYSTICK_DisableIT();	// disable systick interrupt so as delay que does not interfere
+	QueTask(tgl_led, 1);
+	assert(eq_tasks(&unit_task, get_tail(rdy_que)));
+	assert(eq_tasks(&unit_task, get_head(rdy_que)));
+	QueTask(led_off, 2);
+	assert(eq_tasks(&unit_task, get_head(rdy_que));
+	unit_task.prio = 2;
+	unit_task.ref_prio = 2;
+	unit_task.func = led_off;
+	unit_task.ref_count = 1;
+	assert(eq_tasks(&unit_task, get_head(rdy_que));
+	LL_SYSTICK_EnableIT(); // enable systick interrupt again
+	
+	
+}
+
 ////////////////////////////////////
 
 //// DEMO 1 (temperature sensor) TASKS ////

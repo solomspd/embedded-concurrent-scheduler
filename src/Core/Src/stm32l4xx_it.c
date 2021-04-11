@@ -49,6 +49,7 @@ extern void queue_push_back(struct queue* que, struct task* new_task);
 extern struct queue delay_que, rdy_que;
 extern void QueTask(void (*func_in)(void), uint8_t priority_in);
 extern void set_temp_thresh(void);
+extern struct task* get_head(struct queue *que);
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -198,7 +199,7 @@ void SysTick_Handler(void)
 		wrap_around(&i, delay_que.max);
 	}
 	
-	while (delay_que.que[delay_que.head]->prio == 0 && delay_que.len > 0) {
+	while (get_head(delay_que)->prio == 0 && delay_que.len > 0) {
 		struct task* cur_task = queue_pop(&delay_que);
 		cur_task->prio = cur_task->ref_prio;
 		queue_push_back(&rdy_que, cur_task);
