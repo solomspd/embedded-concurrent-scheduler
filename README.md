@@ -146,7 +146,7 @@ This application is comprised of 3 tasks.
 
 - `set_temp_thresh()`: Reads a single character from the UART connection, adding it to a buffer. When a new line character is received, it parses the string and produces a new threshold.
 
-A UART interrupt is set up to trigger when a new character is received. All this interrupt does `QueTask(set_temp_thresh,1)` to trigger the `set_temp_thresh` task and process the new character.
+A UART interrupt is set up to trigger when a new character is received. To keep the intterupt code to a minimum, all this interrupt does `QueTask(set_temp_thresh,1)` to trigger the `set_temp_thresh` task and process the new character.
 
 ### Connections
 
@@ -166,3 +166,7 @@ This application we read a distance from an ultrasonic sensor and according to t
 - Connect the ultrasonic sensor VCC to 5v and ground to ground.
 - Connect sensor trig to A0 and echo to A1
 - Connect the buzzer ground to ground and VCC to B3.
+
+Since STM32L4 seems to have issues with interrupts over UART over UART1, we use UART2 with a USB to TTL module.
+
+- Connect USB to TTL Rx to STM32 Tx and Tx to STM32 Rx. And ground to ground.

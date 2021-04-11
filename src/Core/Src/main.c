@@ -37,7 +37,7 @@
 #define INTERNAL 0
 #define DEMO1 1
 #define DEMO2 2
-#define TASK_SET DEMO2
+#define TASK_SET DEMO1
 #define DEBUG
 /* USER CODE END PD */
 
@@ -49,6 +49,7 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -60,7 +61,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
-
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 void wrap_around(int *x,int wrap_val);
 struct task* get_tail(struct queue *que);
@@ -302,16 +303,17 @@ void read_temp() {
 	
 	#ifdef DEBUG
 	tmp = cur_temp;
-	cur_temp = cur_temp >> 2;
-	buf[0] = cur_temp/10 + '0';
-	buf[1] = cur_temp%10 + '0';
-	cur_temp = tmp & 0x3;
-	buf[3] = (cur_temp*25)/10 + '0';
-	buf[4] = (cur_temp*25)%10 + '0';
+	int16_t debug;
+	debug = tmp >> 2;
+	buf[0] = debug/10 + '0';
+	buf[1] = debug%10 + '0';
+	debug = tmp & 0x3;
+	buf[3] = (debug*25)/10 + '0';
+	buf[4] = (debug*25)%10 + '0';
 	HAL_UART_Transmit(&huart2, buf, sizeof(buf), HAL_MAX_DELAY);
 	#endif
 	
-	ReRunMe(600); // 30/0.05
+	ReRunMe(600);
 }
 
 void trig_alarm() {
@@ -326,25 +328,29 @@ void trig_alarm() {
 uint8_t temp_buf [8];
 int temp_loc = 0;
 void set_temp_thresh() {
-	HAL_UART_Receive(&huart2, temp_buf+temp_loc, 1, 10);
-	HAL_UART_Transmit(&huart2, temp_buf+temp_loc, 1, 10);
-	__HAL_UART_ENABLE_IT(&huart2, UART_IT_RXNE);
-	if (temp_buf[temp_loc] == '\n') {
-		int tmp = 0;
+	HAL_UART_Receive(&huart1, temp_buf+temp_loc, 1, 10);
+	HAL_UART_Transmit(&huart1, temp_buf+temp_loc, 1, 10);
+	__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
+	if (temp_buf[temp_loc] == 0x0D) {
+		__HAL_UART_DISABLE_IT(&huart1, UART_IT_RXNE);
+		HAL_UART_Transmit(&huart1, (uint8_t*)"\n\r", 3, 10);
+		__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
+		volatile int tmp = 0;
 		int sig = 1;
+		temp_loc--;
 		while (temp_buf[temp_loc] != '.') {
-			tmp = sig * (temp_buf[temp_loc--] - '0');
+			tmp += sig * (temp_buf[temp_loc--] - '0');
 			sig *= 10;
 		}
-		thresh = tmp/25 + 1;
+		thresh = tmp/25;
 		tmp = 0;
 		sig = 1;
 		temp_loc--; // skip decimal point
-		while (temp_loc > 0) {
-			tmp = sig * (temp_buf[temp_loc--] - '0');
+		while (temp_loc >= 0) {
+			tmp += sig * (temp_buf[temp_loc--] - '0');
 			sig *= 10;
 		}
-		thresh |= tmp << 2;
+		thresh += tmp << 2;
 		temp_loc = 0;
 	} else {
 		temp_loc++;
@@ -372,7 +378,7 @@ void read_dist() {
 		buf[i] = time%10 + '0';
 		time /= 10;
 	}
-	HAL_UART_Transmit(&huart2, buf, 10, HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart2, (uint8_t*)buf, 10, HAL_MAX_DELAY);
 	HAL_UART_Transmit(&huart2, "\n\r", 3, HAL_MAX_DELAY);
 	#endif
 	
@@ -425,6 +431,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_I2C1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 	init();
   /* USER CODE END 2 */
@@ -441,6 +448,7 @@ int main(void)
 	QueTask(taskA, 1);
 	QueTask(taskB, 4);
 	#elif TASK_SET == DEMO1
+	__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
 	QueTask(read_temp, 2);
 	QueTask(trig_alarm, 3);
 	#elif TASK_SET == DEMO2
@@ -493,7 +501,9 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_I2C1;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2
+                              |RCC_PERIPHCLK_I2C1;
+  PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
@@ -551,6 +561,41 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
 
 }
 
