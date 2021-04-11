@@ -63,6 +63,7 @@ This method does not take any arguments, it simply dequeues the top of the queue
 
 ### `void wrap_around(int *x,int wrap_val);`
 
+Used to treat the queue as a continous queue. Wraps around the values so that index of `-1` would be the end of the que and index of `wrap_val` would be the start of the array.
 
 ### `struct task* get_tail(struct queue *que);`
 
