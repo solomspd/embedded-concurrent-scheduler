@@ -41,7 +41,7 @@ It does not use an array of tasks since it is a common use case for tasks to be 
 
 Tasks are created dynamically through `malloc`. When a task is passed to another queue, a counter presenting the number of active references is incremented but when it is dequeued the reference counter is decremented. When the reference counter is 0, the task allocated memory is freed.
 
-## API
+## User facing API
 
 ### `void QueTask(void (*func_in)(void), uint8_t priority_in)`
 
@@ -60,6 +60,8 @@ It pops it from one queue and pushes it back into the other.
 ### `void Dispatch(void)`
 
 This method does not take any arguments, it simply dequeues the top of the queue with the tasks ready to run and runs it.
+
+## Queue internal API
 
 ### `void wrap_around(int *x,int wrap_val);`
 
