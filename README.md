@@ -2,9 +2,17 @@
 
 This library sets out to create simple cooperative task scheduler for embedded C applications for STM32L4 devices. 
 
+## Running this repo
+
+To run this repository to develop or run any of the sample applications, simply clone it and open it in keil. Then you can uncomment the compiler flags in the beginning of the `main.c` to print debug values over UART2.
+
+To select any of the sample applications to run, simply assign `TASK_SET` to the appropriate value (either `DEMO1` or `DEMO2` or `INTERNAL`). Internal is the simplest task set that involves toggling an LED and writing to UART2.
+
+No additional configuration required through CubeMx since no pin designations interfere between sample applications.
+
 ## Integrating into your project
 
-To build the project, use your preferred pinout and configurations and the resulting project files from CubeMX.
+To build the project, use your preferred pinout and configurations and the resulting project files from CubeMx.
 
 Simply include the `sched.h` file in main and the `itter.h` file in the interrupts source file.
 
@@ -103,6 +111,8 @@ Initialize the queue pointed to by que to default values.
 
 Here a few sample application that demonstrate the power and capabilities of this scheduler.
 
+Note: Pinouts mentioned are according to STM32L4 internal pinout names not the arduino convention.
+
 ## Temperature alarm
 
 This application triggers an alarm in the form of flickering an LED when the temperature from a sensor crosses a certain threshold. It reads an input from the user over UART to set the temperature threshold.
@@ -119,10 +129,21 @@ This application is comprised of 3 tasks.
 
 A UART interrupt is set up to trigger when a new character is received. All this interrupt does `QueTask(set_temp_thresh,1)` to trigger the `set_temp_thresh` task and process the new character.
 
+### Connections
+
+- Connect the temperature sensor VCC to 3v3 and ground to ground.
+- Connect sensor SCL to A9 and sensor SDA to A10.
+
 ## Parking sensor
 
 This application we read a distance from an ultrasonic sensor and according to this distance, we inversely proportionally increase the rate of beeping of a buzzer.
 
-- `read_dist()`: Read the distance from an HC-SR04 ultrasonic sensor and scale it.
+- `read_dist()`: Request and read the distance from an HC-SR04 ultrasonic sensor by polling it and scale the result.
 
 - `beep()`: Trigger a 1ms beep and rerun according to the scaled distance from the ultrasonic sensor. We use the scheduler to set up the beep period.
+
+### Connections
+
+- Connect the ultrasonic sensor VCC to 5v and ground to ground.
+- Connect sensor trig to A0 and echo to A1
+- Connect the buzzer ground to ground and VCC to B3.
