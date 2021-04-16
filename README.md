@@ -151,7 +151,7 @@ A UART interrupt is set up to trigger when a new character is received. To keep 
 - Connect the temperature sensor VCC to 3v3 and ground to ground.
 - Connect sensor SCL to A9 and sensor SDA to A10.
 
-https://youtu.be/0WEf4JgkcQE
+[![Demo1](https://yt-embed.herokuapp.com/embed?v=0WEf4JgkcQE)](https://youtu.be/0WEf4JgkcQE)
 
 ## Parking sensor
 
@@ -171,4 +171,4 @@ Since STM32L4 seems to have issues with interrupts over UART over UART1, we use 
 
 - Connect USB to TTL Rx to STM32 Tx and Tx to STM32 Rx. And ground to ground.
 
-https://youtu.be/0X_GfUMAeQ0
+[![Demo2](https://yt-embed.herokuapp.com/embed?v=0X_GfUMAeQ0)](https://youtu.be/0X_GfUMAeQ0)
