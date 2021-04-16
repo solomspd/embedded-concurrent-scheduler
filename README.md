@@ -151,6 +151,8 @@ A UART interrupt is set up to trigger when a new character is received. To keep 
 - Connect the temperature sensor VCC to 3v3 and ground to ground.
 - Connect sensor SCL to A9 and sensor SDA to A10.
 
+https://youtu.be/0WEf4JgkcQE
+
 ## Parking sensor
 
 This application we read a distance from an ultrasonic sensor and according to this distance, we inversely proportionally increase the rate of beeping of a buzzer.
@@ -168,3 +170,5 @@ This application we read a distance from an ultrasonic sensor and according to t
 Since STM32L4 seems to have issues with interrupts over UART over UART1, we use UART2 with a USB to TTL module.
 
 - Connect USB to TTL Rx to STM32 Tx and Tx to STM32 Rx. And ground to ground.
+
+https://youtu.be/0X_GfUMAeQ0
